@@ -1,0 +1,195 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
+<title>无标题文档</title>
+<script type="text/javascript" src="jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="raphael.js"></script>
+<script type="text/javascript" src="raphael_draggable.js"></script>
+<script type="text/javascript"> 
+
+	/*
+	* 画矩形
+	* params:画布,外部矩形横坐标,外部矩形纵坐标,外部矩形的宽,外部矩形的高,内部矩形的宽，内部矩形的高
+	*/
+	function EntityBar(paper, startX , startY , outW, outH , inW ,inH , outBorderSize){
+
+		//创建内部矩形
+		var inRect = paper.rect(startX+outW-inW, startY+outH-inH , inW-outBorderSize , inH-outBorderSize).attr({"fill":"none","stroke":"#fff",'stroke-width':'0'}).drag(inMove,inStartMove,inEndMove).toBack(); 
+		//创建外部矩形
+		var outRect = paper.rect(startX, startY , outW , outH).attr({'fill':'white', 'stroke':'#666','stroke-width':outBorderSize}).drag(outMove, outStartMove,outEndMove).data("cooperative", inRect).toBack();
+		
+		/*
+		* 定义拖动外部矩形的开始移动，移动和结束移动事件
+		* 注：dx：相对起始点的x位移,dy:相对起始点的y位移,x:鼠标的 x轴位置,y:鼠标的 y轴位置,event:DOM事件对象,e.clientX:当前鼠标x坐标,e.clientY：当前鼠标Y坐标
+		*/
+		function outStartMove(dx,dy){
+			//为元素(外部矩形outRect)自定义属性并赋值
+			this.tempx = this.attr("x"); 
+			this.tempy = this.attr("y"); 	
+		}
+		function outMove(dx,dy,x,y){
+			//拖动外部矩形时改变外部矩形的位置
+			var attr = {'x': this.tempx + dx, 'y': this.tempy + dy ,'cursor':'move'};
+			this.attr(attr);
+			
+			//获取存放的数据对象
+			var temp_rect = this.data("cooperative"); 
+			//拖动外部矩形时改变内部矩形的位置
+			var temp_attr = {x: this.tempx + dx + this.attr("width") -inW, y: this.tempy + dy + this.attr("height") -inH }; 
+			temp_rect.attr(temp_attr);
+		} 
+		function outEndMove(){ 
+			this.animate({"fill-opacity": 1}, 300); 
+		}
+		
+		//对内部矩形的操作
+		var beforeMoveX_in = 0;//拖动内部矩形之前内部矩形的X坐标点
+		var beforeMoveY_in = 0;//拖动内部矩形之前内部矩形的Y坐标点
+		var beforeMoveW_out = 0;//拖动内部矩形之前外部矩形的宽度
+		var beforeMoveH_out = 0;//拖动内部矩形之前外部矩形的高度
+		
+		/*
+		* 定义拖动内部矩形的开始移动，移动和结束移动事件
+		*/
+		function inStartMove(){
+			//为当前元素(矩形inRect)自定义属性并赋值
+			this.mx = this.attr("x");
+			this.my = this.attr("y");
+			
+			//获取内部矩形拖动之前的x坐标并赋值给变量beforeMoveX_in
+			beforeMoveX_in = this.attr("x");
+			//获取内部矩形拖动之前的y坐标并赋值给变量beforeMoveY_in
+			beforeMoveY_in = this.attr("y");
+			
+			//获取内部矩形拖动之前外部矩形的宽度
+			beforeMoveW_out = outRect.attr("width");
+			//获取内部矩形拖动之前外部矩形的高度
+			beforeMoveH_out = outRect.attr("height");
+			
+		}
+		function inMove(dx,dy,x,y){
+			//当拖动内部矩形时，改变外部矩形的宽高
+			outRect.attr({
+				'width' : beforeMoveW_out + dx,//拖动后的宽度 = 拖动前的宽度 + x轴的位移
+				'height' : beforeMoveH_out + dy//拖动后的高度 = 拖动前的高度 + y轴的位移
+			});
+			//对内部矩形重新定位
+			this.attr('x',x - inW);
+			this.attr('y',y - inH);
+			
+		}
+		function inEndMove(e){
+			//拖动结束时，重新改变外部矩形的宽高
+			outRect.attr({
+				'width' : beforeMoveW_out + (e.clientX-beforeMoveX_in)-inW,
+				'height' : beforeMoveH_out + (e.clientY-beforeMoveY_in)-inH
+			});
+		}
+		
+		//改变鼠标的状态
+		outRect.hover(function(){
+			this.attr('cursor','move');
+		},function(){});
+		inRect.hover(function(e){
+			this.attr('cursor','se-resize');
+			e.stopPropagation();//阻止冒泡,有浏览器兼容迹象
+		},function(){});
+	}		
+	
+	//画一条虚线
+	function drawVirtualLine(paper){
+		var vline = paper.path('M20,20L20,180z').attr({'fill':'white','stroke':'#666666','stroke-width':'2','stroke-dasharray':'- ','cursor':'move'});
+		vline.draggable();
+	}
+	
+	//画圆
+	function drawCircle(paper){
+		var circle = paper.circle(50,100,30).attr({'fill':'white','stroke':'#D2691E','cursor':'move'});
+		circle.draggable();
+	}
+	
+	//画直线
+	function drawLine(paper){
+		var line = paper.path('M60,20L100,110z').attr({'fill':'white','stroke':'#FF00FF','cursor':'move'});
+		line.draggable();
+	}
+	
+	//画三角形
+	function drawSjx(paper){
+		var sjx = paper.path('M290,270L310,310L270,310Z').attr({'fill':'green','stroke':'#666666','stroke-dasharray':'4,3','cursor':'move'});	
+		sjx.draggable();
+	}
+	
+	//写字
+	function drawText(paper,val){
+		var text = paper.text(60,120,val).attr({'font':'20px Fontin-Sans Arial','stroke':'red','cursor':'move'});
+		text.draggable();
+	}
+	
+	//画大括号
+	function drawDkh(paper){
+		var dkh = paper.path('M70,100C110,100,64,224,104,224M105,223C75,235,120,324,72,350').attr({
+			'fill':'none',
+			'stroke':'#bf2f2f',
+			'stroke-width':'2',
+			'stroke-linecap':'round',
+			'cursor':'move',
+			'style':'stroke-linecap: round;'
+		});
+		dkh.draggable();
+	}
+	
+	$(function(){
+		var paper = Raphael("holder", 620, 420),discattr={fill:"red", stroke:"none"}; 
+		
+		//矩形
+		$("#draw_rect").click(function(){
+			//画布,外部矩形横坐标,外部矩形纵坐标,外部矩形的宽,外部矩形的高,内部矩形的宽，内部矩形的高,外部矩形的边框大小
+			var entity1 = new EntityBar(paper, 20, 50, 100, 60,11,11,1);
+		});
+		//虚线
+		$("#draw_vline").click(function(){
+			var vline = drawVirtualLine(paper);
+		});
+		//画圆
+		$("#draw_circle").click(function(){
+			var c = drawCircle(paper);
+		});
+		//画直线
+		$("#draw_line").click(function(){
+			var line = drawLine(paper);
+		});
+		//画三角形
+		$("#draw_sjx").click(function(){
+			var sjx = drawSjx(paper);
+		});
+		//画大括号
+		$("#draw_dkh").click(function(){
+			var dkh = drawDkh(paper);
+		});
+		//写字
+		$("#draw_text").click(function(){
+			var text = drawText(paper,$("#xiezi").val());
+		});
+	});
+	
+</script> 
+</head> 
+<body> 
+<div id="holder" style="border:1px #0000FF solid;width:620px;"> 
+</div> 
+<div style="margin-top:-350px;margin-left:655px;">
+	<input type="button" value="帮我画一个矩形" id="draw_rect" /><br /><br />
+	<input type="button" value="帮我画一个圆" id="draw_circle" /><br /><br />
+	<input type="button" value="帮我画一个三角形" id="draw_sjx" /><br /><br />
+	<input type="button" value="帮我画一个直线" id="draw_line" /><br /><br />
+	<input type="button" value="帮我画一个虚线" id="draw_vline" /><br /><br />
+	<input type="button" value="帮我画一个大括号" id="draw_dkh" /><br /><br />
+	<input type="button" value="帮我写字" id="draw_text" /><input type="text" value="" id="xiezi" /><br /><br />
+	
+</div>
+
+
+</body> 
+</html> 
